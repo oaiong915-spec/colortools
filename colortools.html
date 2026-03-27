@@ -446,7 +446,9 @@ function loadRefImg(input) {
   const file = input.files[0]; if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    refImgB64 = e.target.result.split(',')[1];
+    compressImg(e.target.result, 768, 0.8, compressed => {
+      refImgB64 = compressed.split(',')[1];
+    });
     const zone = document.getElementById('ref-zone');
     let img = zone.querySelector('img.preview');
     if(!img){ img=document.createElement('img');img.className='preview';zone.appendChild(img); }
@@ -804,14 +806,33 @@ function addProfileImgs(input) {
   files.forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
-      profileImgB64s.push(e.target.result.split(',')[1]);
-      const img = document.createElement('img');
-      img.src = e.target.result;
-      img.className = 'img-thumb';
-      thumbs.appendChild(img);
+      // 이미지 압축해서 저장
+      compressImg(e.target.result, 512, 0.7, compressed => {
+        profileImgB64s.push(compressed.split(',')[1]);
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.className = 'img-thumb';
+        thumbs.appendChild(img);
+      });
     };
     reader.readAsDataURL(file);
   });
+}
+
+function compressImg(dataUrl, maxSize, quality, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    let w = img.width, h = img.height;
+    if(w > maxSize || h > maxSize) {
+      if(w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+      else { w = Math.round(w * maxSize / h); h = maxSize; }
+    }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    cb(canvas.toDataURL('image/jpeg', quality));
+  };
+  img.src = dataUrl;
 }
 
 async function learnProfile() {
@@ -873,8 +894,8 @@ async function learnProfile() {
       alert('프로필 생성에 실패했어요. 다시 시도해주세요.');
     }
   } catch(e) {
-    console.error(e);
-    alert('오류가 발생했어요. 이미지 크기를 줄이거나 장 수를 줄여서 다시 시도해보세요.');
+    console.error('learnProfile error:', e);
+    alert('오류가 발생했어요: ' + (e.message||'알 수 없는 오류') + '\n\n이미지를 1장만 올려서 다시 시도해보세요.');
   }
   hideLoading();
 }
