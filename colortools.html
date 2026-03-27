@@ -818,67 +818,64 @@ async function learnProfile() {
   if(!profileImgB64s.length) { alert('이미지를 먼저 올려주세요!'); return; }
   showLoading('색감 학습 중... 잠시만요');
 
-  // Send all images to Claude for style analysis
-  const content = [
-    ...profileImgB64s.slice(0,6).map(b64 => ({
-      type: 'image',
-      source: { type: 'base64', media_type: 'image/jpeg', data: b64 }
-    })),
-    {
-      type: 'text',
-      text: `이 이미지들은 제가 좋아하는 색감의 일러스트입니다. 이 색감의 특징을 학습하고 프로필을 만들어주세요.
-
-분석 항목:
-- 전체 채도 수준 (낮음/중간/높음)
-- 명도 범위 (어두운지 밝은지)
-- 한색/난색 경향 (어느 쪽이 더 강한지)
-- 색조 특징 (파스텔, 선명, 탁함, 맑음 등)
-- 자주 쓰이는 색상 계열
-- 색들의 분위기 키워드
-
-JSON으로만 반환:
-{
-  "style_name": "이 색감을 한 단어로",
-  "style_desc": "색감 특징 한 문장",
-  "saturation": "low/medium/high",
-  "brightness": "dark/medium/light",
-  "temperature": "cool/neutral/warm",
-  "tone": "pastel/vivid/muted/clear 중 하나",
-  "dominant_hues": ["주로 쓰이는 색조1","색조2","색조3"],
-  "keywords": ["분위기 키워드1","키워드2","키워드3"],
-  "color_rules": [
-    "이 색감의 채색 규칙1 (예: 그림자에 보라가 섞임)",
-    "규칙2",
-    "규칙3"
-  ],
-  "avoid": ["이 색감에서 피해야 할 것1","피해야 할 것2"]
-}`
-    }
-  ];
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    // 이미지를 한 장씩 분석 후 합산
+    let analyses = [];
+    const maxImgs = Math.min(profileImgB64s.length, 5); // 최대 5장
+
+    for(let i = 0; i < maxImgs; i++) {
+      document.getElementById('loading-sub').textContent = `이미지 분석 중... (${i+1}/${maxImgs})`;
+      const content = [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: profileImgB64s[i] } },
+        { type: 'text', text: `이 일러스트의 색감 특징을 분석해주세요. JSON으로만 반환:
+{"saturation":"low/medium/high","brightness":"dark/medium/light","temperature":"cool/neutral/warm","tone":"pastel/vivid/muted/clear","dominant_hues":["색조1","색조2"],"keywords":["키워드1","키워드2"]}` }
+      ];
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          system: '색감 분석 전문가. JSON만 반환.',
+          messages: [{ role: 'user', content }]
+        })
+      });
+      const data = await res.json();
+      const parsed = parseJSON(data.content?.[0]?.text || '');
+      if(parsed) analyses.push(parsed);
+    }
+
+    if(!analyses.length) { alert('분석에 실패했어요. 다시 시도해주세요.'); hideLoading(); return; }
+
+    // 분석 결과 합산해서 프로필 생성
+    document.getElementById('loading-sub').textContent = '색감 프로필 생성 중...';
+    const summary = JSON.stringify(analyses);
+    const res2 = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1200,
-        system: '색감 분석 전문가입니다. JSON만 반환하세요.',
-        messages: [{ role: 'user', content }]
+        max_tokens: 800,
+        system: '색감 분석 전문가. JSON만 반환.',
+        messages: [{ role: 'user', content: `다음은 여러 일러스트 이미지의 색감 분석 결과입니다:\n${summary}\n\n이것들을 종합해서 하나의 색감 프로필을 만들어주세요. JSON으로만 반환:
+{"style_name":"색감 이름 한 단어","style_desc":"색감 특징 한 문장","saturation":"low/medium/high","brightness":"dark/medium/light","temperature":"cool/neutral/warm","tone":"pastel/vivid/muted/clear","dominant_hues":["주요색조1","색조2","색조3"],"keywords":["분위기키워드1","키워드2","키워드3"],"color_rules":["채색규칙1","규칙2","규칙3"],"avoid":["피할것1","피할것2"]}` }]
       })
     });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    const profile = parseJSON(text);
+    const data2 = await res2.json();
+    const profile = parseJSON(data2.content?.[0]?.text || '');
+
     if(profile) {
       colorProfile = profile;
       localStorage.setItem('colorProfile', JSON.stringify(profile));
       refreshProfileStatus();
       showAlert2('✦ 색감 학습 완료! 이제 컬러를 입력해서 조정해보세요.');
     } else {
-      alert('분석에 실패했어요. 다시 시도해주세요.');
+      alert('프로필 생성에 실패했어요. 다시 시도해주세요.');
     }
-  } catch(e) { console.error(e); alert('오류 발생!'); }
+  } catch(e) {
+    console.error(e);
+    alert('오류가 발생했어요. 이미지 크기를 줄이거나 장 수를 줄여서 다시 시도해보세요.');
+  }
   hideLoading();
 }
 
