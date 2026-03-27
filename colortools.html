@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수분화 컬러 어시스턴트</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f8f4ef;--bg2:#ffffff;--bg3:#f2ece4;--bg4:#ebe2d8;
+  --border:rgba(100,70,50,0.1);--border2:rgba(100,70,50,0.18);--border3:rgba(100,70,50,0.3);
+  --text:#2c1a0e;--text2:#7a5c48;--text3:#b09080;
+  --ink:#3d2314;--radius:10px;--radius-lg:18px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 20% -10%,rgba(200,170,130,0.18) 0%,transparent 55%),radial-gradient(ellipse 60% 50% at 80% 110%,rgba(160,190,210,0.12) 0%,transparent 50%);pointer-events:none;z-index:0;}
+
+.layout{max-width:980px;margin:0 auto;padding:2rem 1.5rem;position:relative;z-index:1;}
+.header{text-align:center;margin-bottom:2.5rem;}
+.logo{font-family:'Cormorant Garamond',serif;font-size:38px;color:var(--ink);letter-spacing:-0.5px;margin-bottom:4px;}
+.logo em{font-style:italic;color:#8a6040;}
+.sub{font-size:11px;color:var(--text3);letter-spacing:3px;text-transform:uppercase;}
+
+/* Two column layout */
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;}
+.cols-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;margin-bottom:1.25rem;}
+@media(max-width:700px){.cols,.cols-3{grid-template-columns:1fr;}}
+
+.card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:1.4rem;box-shadow:0 2px 16px rgba(100,60,30,0.07);}
+.card-title{font-size:11px;font-weight:500;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+.card-title::before{content:'';width:14px;height:1px;background:var(--text3);}
+
+/* Upload area */
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius);background:var(--bg3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .18s;padding:1.5rem;text-align:center;position:relative;min-height:160px;}
+.upload-zone:hover{border-color:var(--border3);background:var(--bg4);}
+.upload-zone.has-img{padding:0;overflow:hidden;}
+.upload-zone img{width:100%;height:100%;object-fit:contain;max-height:240px;}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+.upload-icon{font-size:28px;opacity:.4;}
+.upload-text{font-size:13px;color:var(--text3);}
+.upload-sub{font-size:11px;color:var(--text3);opacity:.7;}
+.img-overlay{position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .15s;display:flex;align-items:center;justify-content:center;}
+.upload-zone.has-img:hover .img-overlay{background:rgba(0,0,0,0.35);}
+.img-overlay-txt{color:#fff;font-size:13px;opacity:0;transition:opacity .15s;}
+.upload-zone.has-img:hover .img-overlay-txt{opacity:1;}
+
+/* Color palette extracted */
+.palette-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.swatch{width:36px;height:36px;border-radius:8px;border:2px solid rgba(255,255,255,0.8);cursor:pointer;position:relative;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.15);transition:transform .12s;}
+.swatch:hover{transform:scale(1.15);}
+.swatch.selected{border-color:var(--ink);transform:scale(1.15);}
+.swatch-label{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text3);white-space:nowrap;font-family:monospace;}
+
+/* Environment selector */
+.env-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.env-btn{padding:10px 8px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:12px;cursor:pointer;transition:all .15s;text-align:center;line-height:1.5;}
+.env-btn:hover{background:var(--bg4);border-color:var(--border3);}
+.env-btn.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+.env-btn .eicon{font-size:18px;display:block;margin-bottom:4px;}
+.env-section{margin-bottom:14px;}
+.env-label{font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px;}
+
+/* Color result cards */
+.result-section{margin-top:1.5rem;}
+.color-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.color-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);}
+.color-swatch-big{height:100px;position:relative;display:flex;align-items:flex-end;padding:10px;}
+.color-card-label{background:rgba(255,255,255,0.92);border-radius:6px;padding:4px 8px;font-size:11px;font-weight:500;color:var(--text);}
+.color-card-body{padding:10px 12px;background:var(--bg2);}
+.color-card-name{font-size:13px;font-weight:500;margin-bottom:3px;}
+.color-card-code{font-family:monospace;font-size:12px;color:var(--text2);cursor:pointer;display:flex;align-items:center;gap:5px;}
+.color-card-code:hover{color:var(--text);}
+.color-card-desc{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.6;}
+.copy-icon{font-size:10px;opacity:.5;}
+
+/* Harmony section */
+.harmony-section{margin-top:1.5rem;}
+.harmony-pair{display:flex;gap:0;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);margin-bottom:10px;}
+.harmony-half{flex:1;height:64px;display:flex;align-items:center;justify-content:center;}
+.harmony-info{padding:10px 14px;background:var(--bg2);flex:1;display:flex;align-items:center;}
+.harmony-desc{font-size:12px;color:var(--text2);line-height:1.6;}
+
+/* Character parts */
+.parts-grid{display:flex;flex-direction:column;gap:8px;}
+.part-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);}
+.part-name{font-size:12px;color:var(--text2);width:60px;flex-shrink:0;}
+.part-color{width:32px;height:32px;border-radius:6px;border:1px solid var(--border2);cursor:pointer;flex-shrink:0;}
+.part-code{font-family:monospace;font-size:12px;color:var(--text2);flex:1;}
+.part-suggested{display:flex;gap:5px;flex-wrap:wrap;}
+.part-sug{width:24px;height:24px;border-radius:5px;cursor:pointer;border:1.5px solid rgba(255,255,255,0.6);transition:transform .1s;box-shadow:0 1px 3px rgba(0,0,0,0.15);}
+.part-sug:hover{transform:scale(1.2);}
+
+/* Loading */
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(248,244,239,0.85);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px;backdrop-filter:blur(4px);}
+.loading-overlay.show{display:flex;}
+.loading-title{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--ink);}
+.loading-sub{font-size:13px;color:var(--text3);}
+.spinner{width:40px;height:40px;border:2px solid var(--border2);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Buttons */
+.btn{padding:11px 20px;border-radius:var(--radius);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:'Noto Sans KR',sans-serif;font-size:14px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn:hover{background:var(--bg3);border-color:var(--border3);}
+.btn:active{transform:scale(.97);}
+.btn-ink{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:500;}
+.btn-ink:hover{background:#2a1008;}
+.btn-full{width:100%;}
+.btn-sm{padding:7px 14px;font-size:13px;}
+
+/* Alert */
+.alert{font-size:13px;padding:10px 14px;border-radius:var(--radius);margin-bottom:1rem;border:1px solid;line-height:1.6;}
+.alert-info{background:rgba(100,140,180,0.08);border-color:rgba(100,140,180,0.25);color:#3a5a7a;}
+.alert-warn{background:rgba(180,120,50,0.08);border-color:rgba(180,120,50,0.25);color:#7a4a10;}
+
+/* Canvas (hidden) */
+#extract-canvas{display:none;}
+
+/* Tab */
+.tabs{display:flex;gap:0;border:1px solid var(--border2);border-radius:var(--radius);overflow:hidden;margin-bottom:1.25rem;}
+.tab{flex:1;padding:10px;border:none;background:transparent;color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:13px;cursor:pointer;transition:all .15s;}
+.tab:hover{background:var(--bg3);}
+.tab.active{background:var(--ink);color:#fff;font-weight:500;}
+
+.sep{height:1px;background:var(--border);margin:14px 0;}
+.hidden{display:none!important;}
+.row{display:flex;gap:10px;align-items:center;}
+.flex1{flex:1;}
+.mt{margin-top:10px;}
+
+/* Profile tab styles */
+.profile-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:var(--radius);border:1px solid var(--border2);background:var(--bg3);font-size:13px;}
+.profile-badge.learned{background:rgba(60,100,60,0.08);border-color:rgba(60,120,60,0.25);color:#3a6a3a;}
+.profile-badge.empty{color:var(--text3);}
+.img-thumb-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.img-thumb{width:70px;height:70px;border-radius:var(--radius);object-fit:cover;border:1px solid var(--border2);}
+.char-part-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.char-part-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);}
+.char-part-name{font-size:12px;color:var(--text2);width:55px;flex-shrink:0;}
+.char-part-color{width:30px;height:30px;border-radius:6px;border:1px solid var(--border2);cursor:pointer;flex-shrink:0;}
+.char-part-code{font-family:monospace;font-size:11px;color:var(--text2);}
+.result-char-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.result-char-card{border-radius:var(--radius);overflow:hidden;border:1px solid var(--border2);}
+.rcc-top{height:80px;display:flex;flex-direction:column;align-items:flex-end;padding:6px;gap:4px;}
+.rcc-pair{display:flex;gap:3px;align-items:center;}
+.rcc-orig{width:22px;height:22px;border-radius:4px;border:1px solid rgba(255,255,255,0.5);opacity:.65;}
+.rcc-arrow{font-size:10px;color:rgba(255,255,255,0.7);}
+.rcc-new{width:26px;height:26px;border-radius:5px;border:2px solid rgba(255,255,255,0.9);}
+.rcc-body{padding:8px 10px;background:var(--bg2);}
+.rcc-name{font-size:12px;font-weight:500;margin-bottom:2px;}
+.rcc-code{font-family:monospace;font-size:11px;color:var(--text2);cursor:pointer;}
+.rcc-desc{font-size:10px;color:var(--text3);margin-top:3px;line-height:1.5;}
+
+/* Tooltip copy flash */
+.copied-flash{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--ink);color:#fff;padding:8px 16px;border-radius:var(--radius);font-size:13px;z-index:200;transform:translateY(40px);opacity:0;transition:all .25s;}
+.copied-flash.show{transform:translateY(0);opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="spinner"></div>
+  <div class="loading-title">컬러 분석 중...</div>
+  <div class="loading-sub" id="loading-sub">환경광과 한난 대비를 계산하고 있어요</div>
+</div>
+<div class="copied-flash" id="flash">복사됨!</div>
+
+<div class="layout">
+  <div class="header">
+    <div class="logo">수분화 <em>컬러</em> 어시스턴트</div>
+    <div class="sub">환경광 · 반사광 · 한난 대비 자동 계산</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tab-env" onclick="switchTab('env')">🌤 환경으로 색 뽑기</button>
+    <button class="tab" id="tab-ref" onclick="switchTab('ref')">🖼 레퍼런스 분석</button>
+    <button class="tab" id="tab-harmony" onclick="switchTab('harmony')">🎨 색 조화 추천</button>
+    <button class="tab" id="tab-profile" onclick="switchTab('profile')">✦ 나만의 색감 적용</button>
+  </div>
+
+  <!-- TAB 1: Environment -->
+  <div id="panel-env">
+    <div class="cols">
+      <!-- Character upload -->
+      <div class="card">
+        <div class="card-title">캐릭터 이미지 / 밑색</div>
+        <label class="upload-zone" id="char-zone" for="char-file">
+          <input type="file" id="char-file" accept="image/*" onchange="loadCharImg(this)">
+          <div class="upload-icon">🖌</div>
+          <div class="upload-text">캐릭터 이미지 업로드</div>
+          <div class="upload-sub">또는 클릭해서 선택</div>
+          <div class="img-overlay"><span class="img-overlay-txt">이미지 변경</span></div>
+        </label>
+        <div id="char-palette" class="palette-row" style="margin-top:12px;min-height:0"></div>
+        <canvas id="extract-canvas"></canvas>
+      </div>
+
+      <!-- Sky upload -->
+      <div class="card">
+        <div class="card-title">하늘 / 배경 이미지 (선택)</div>
+        <label class="upload-zone" id="sky-zone" for="sky-file">
+          <input type="file" id="sky-file" accept="image/*" onchange="loadSkyImg(this)">
+          <div class="upload-icon">🌥</div>
+          <div class="upload-text">하늘/배경 이미지 업로드</div>
+          <div class="upload-sub">없으면 아래 환경 설정으로 대체</div>
+          <div class="img-overlay"><span class="img-overlay-txt">이미지 변경</span></div>
+        </label>
+        <div id="sky-palette" class="palette-row" style="margin-top:12px;min-height:0"></div>
+      </div>
+    </div>
+
+    <!-- Environment presets -->
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">환경 설정</div>
+      <div class="env-section">
+        <div class="env-label">배경</div>
+        <div class="env-grid">
+          <button class="env-btn active" id="bg-sea" onclick="setEnv('bg','sea',this)"><span class="eicon">🌊</span>바다</button>
+          <button class="env-btn" id="bg-mountain" onclick="setEnv('bg','mountain',this)"><span class="eicon">⛰</span>산</button>
+          <button class="env-btn" id="bg-field" onclick="setEnv('bg','field',this)"><span class="eicon">🌾</span>들판</button>
+          <button class="env-btn" id="bg-city" onclick="setEnv('bg','city',this)"><span class="eicon">🏙</span>도시</button>
+          <button class="env-btn" id="bg-forest" onclick="setEnv('bg','forest',this)"><span class="eicon">🌲</span>숲</button>
+          <button class="env-btn" id="bg-indoor" onclick="setEnv('bg','indoor',this)"><span class="eicon">🏠</span>실내</button>
+        </div>
+      </div>
+      <div class="env-section">
+        <div class="env-label">시간대</div>
+        <div class="env-grid">
+          <button class="env-btn" id="time-dawn" onclick="setEnv('time','dawn',this)"><span class="eicon">🌅</span>새벽/일출</button>
+          <button class="env-btn active" id="time-morning" onclick="setEnv('time','morning',this)"><span class="eicon">🌤</span>아침</button>
+          <button class="env-btn" id="time-noon" onclick="setEnv('time','noon',this)"><span class="eicon">☀️</span>낮</button>
+          <button class="env-btn" id="time-evening" onclick="setEnv('time','evening',this)"><span class="eicon">🌇</span>저녁/노을</button>
+          <button class="env-btn" id="time-night" onclick="setEnv('time','night',this)"><span class="eicon">🌙</span>밤</button>
+          <button class="env-btn" id="time-midnight" onclick="setEnv('time','midnight',this)"><span class="eicon">🌃</span>심야</button>
+        </div>
+      </div>
+      <div class="env-section">
+        <div class="env-label">날씨</div>
+        <div class="env-grid">
+          <button class="env-btn active" id="weather-sunny" onclick="setEnv('weather','sunny',this)"><span class="eicon">☀️</span>햇살</button>
+          <button class="env-btn" id="weather-shade" onclick="setEnv('weather','shade',this)"><span class="eicon">⛅</span>그늘</button>
+          <button class="env-btn" id="weather-cloudy" onclick="setEnv('weather','cloudy',this)"><span class="eicon">☁️</span>흐림</button>
+          <button class="env-btn" id="weather-rain" onclick="setEnv('weather','rain',this)"><span class="eicon">🌧</span>비</button>
+          <button class="env-btn" id="weather-snow" onclick="setEnv('weather','snow',this)"><span class="eicon">❄️</span>눈</button>
+          <button class="env-btn" id="weather-fog" onclick="setEnv('weather','fog',this)"><span class="eicon">🌫</span>안개</button>
+        </div>
+      </div>
+      <button class="btn btn-ink btn-full" onclick="analyzeEnv()">✦ 이 환경에 맞는 색 뽑기</button>
+    </div>
+
+    <!-- Results -->
+    <div id="env-result" class="hidden">
+      <div class="card">
+        <div class="card-title">분석 결과</div>
+        <div id="env-result-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: Reference -->
+  <div id="panel-ref" class="hidden">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">레퍼런스 이미지</div>
+      <div class="alert alert-info" style="margin-bottom:12px">레퍼런스 이미지를 올리면 AI가 채색 방식을 분석해서 밑색 · 빛 · 반사광 색을 추출해줘요.</div>
+      <label class="upload-zone" id="ref-zone" for="ref-file" style="min-height:200px">
+        <input type="file" id="ref-file" accept="image/*" onchange="loadRefImg(this)">
+        <div class="upload-icon">🔍</div>
+        <div class="upload-text">레퍼런스 이미지 업로드</div>
+        <div class="upload-sub">다른 작가의 수분화 이미지</div>
+        <div class="img-overlay"><span class="img-overlay-txt">이미지 변경</span></div>
+      </label>
+      <button class="btn btn-ink btn-full mt" onclick="analyzeRef()">✦ 레퍼런스 분석하기</button>
+    </div>
+    <div id="ref-result" class="hidden">
+      <div class="card">
+        <div class="card-title">레퍼런스 분석 결과</div>
+        <div id="ref-result-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: Harmony -->
+  <div id="panel-harmony" class="hidden">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">캐릭터 색상 조화 추천</div>
+      <div class="alert alert-info" style="margin-bottom:12px">머리색, 옷색 등을 입력하면 한난 대비를 맞춰 어울리는 색 조합을 추천해줘요.</div>
+      <div class="parts-grid" id="parts-input">
+        <div class="part-row">
+          <span class="part-name">머리색</span>
+          <input type="color" class="part-color" id="hair-color" value="#f4a0c0">
+          <span class="part-code" id="hair-code">#f4a0c0</span>
+          <span style="font-size:11px;color:var(--text3)">원하는 색 선택</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name">피부색</span>
+          <input type="color" class="part-color" id="skin-color" value="#f5d5b8">
+          <span class="part-code" id="skin-code">#f5d5b8</span>
+          <span style="font-size:11px;color:var(--text3)">원하는 색 선택</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name">옷 (상의)</span>
+          <input type="color" class="part-color" id="top-color" value="#a0d4f4">
+          <span class="part-code" id="top-code">#a0d4f4</span>
+          <span style="font-size:11px;color:var(--text3)">원하는 색 선택</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name">옷 (하의)</span>
+          <input type="color" class="part-color" id="bottom-color" value="#6080c0">
+          <span class="part-code" id="bottom-code">#6080c0</span>
+          <span style="font-size:11px;color:var(--text3)">원하는 색 선택</span>
+        </div>
+        <div class="part-row">
+          <span class="part-name">눈 색</span>
+          <input type="color" class="part-color" id="eye-color" value="#60a0e0">
+          <span class="part-code" id="eye-code">#60a0e0</span>
+          <span style="font-size:11px;color:var(--text3)">원하는 색 선택</span>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="env-section">
+        <div class="env-label">배경 분위기</div>
+        <div class="env-grid">
+          <button class="env-btn active" id="h-bg-warm" onclick="setHEnv('bg','warm',this)"><span class="eicon">🔥</span>따뜻한</button>
+          <button class="env-btn" id="h-bg-cool" onclick="setHEnv('bg','cool',this)"><span class="eicon">❄️</span>차가운</button>
+          <button class="env-btn" id="h-bg-neutral" onclick="setHEnv('bg','neutral',this)"><span class="eicon">🌫</span>중간</button>
+        </div>
+      </div>
+      <button class="btn btn-ink btn-full" onclick="analyzeHarmony()">✦ 색 조화 분석 & 추천</button>
+    </div>
+    <div id="harmony-result" class="hidden">
+      <div class="card">
+        <div class="card-title">색 조화 결과</div>
+        <div id="harmony-result-inner"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: My Color Profile -->
+  <div id="panel-profile" class="hidden">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">① 색감 학습</div>
+      <div id="profile-status" class="profile-badge empty" style="margin-bottom:12px">✦ 저장된 색감 프로필 없음</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:14px">
+        원하는 색감 일러스트를 여러 장 올려주세요. AI가 분석해서 <strong>나만의 색감 프로필</strong>을 만들어줘요.<br>
+        <span style="font-size:11px;color:var(--text3)">한 번 학습하면 브라우저에 저장돼서 다음에도 바로 써요!</span>
+      </div>
+      <label style="display:block;border:1.5px dashed var(--border2);border-radius:var(--radius);background:var(--bg3);padding:1.25rem;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:10px" for="profile-files">
+        <input type="file" id="profile-files" accept="image/*" multiple onchange="addProfileImgs(this)" style="display:none">
+        <div style="font-size:24px;margin-bottom:6px;opacity:.4">🖼</div>
+        <div style="font-size:13px;color:var(--text3)">색감 레퍼런스 이미지 여러 장 올리기</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">클릭 또는 드래그 · 3~10장 권장</div>
+      </label>
+      <div class="img-thumb-grid" id="profile-thumbs"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-ink flex1" onclick="learnProfile()">✦ 이 이미지들로 색감 학습</button>
+        <button class="btn" onclick="clearProfile()" style="color:var(--text3);font-size:13px">프로필 초기화</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-title">② 캐릭터 컬러 입력</div>
+      <div id="profile-no-profile" class="alert alert-warn" style="margin-bottom:12px">먼저 위에서 색감을 학습해주세요!</div>
+      <div class="char-part-grid">
+        <div class="char-part-row"><span class="char-part-name">헤어</span><input type="color" class="char-part-color" id="pp-hair" value="#f4a0c0" oninput="updatePartCode('hair',this.value)"><span class="char-part-code" id="pp-hair-code">#f4a0c0</span></div>
+        <div class="char-part-row"><span class="char-part-name">상의</span><input type="color" class="char-part-color" id="pp-top" value="#a0d4f4" oninput="updatePartCode('top',this.value)"><span class="char-part-code" id="pp-top-code">#a0d4f4</span></div>
+        <div class="char-part-row"><span class="char-part-name">하의</span><input type="color" class="char-part-color" id="pp-bottom" value="#6080c0" oninput="updatePartCode('bottom',this.value)"><span class="char-part-code" id="pp-bottom-code">#6080c0</span></div>
+        <div class="char-part-row"><span class="char-part-name">상의2</span><input type="color" class="char-part-color" id="pp-top2" value="#e8c0a0" oninput="updatePartCode('top2',this.value)"><span class="char-part-code" id="pp-top2-code">#e8c0a0</span></div>
+        <div class="char-part-row"><span class="char-part-name">하의2</span><input type="color" class="char-part-color" id="pp-bottom2" value="#c0a0e0" oninput="updatePartCode('bottom2',this.value)"><span class="char-part-code" id="pp-bottom2-code">#c0a0e0</span></div>
+        <div class="char-part-row"><span class="char-part-name">포인트</span><input type="color" class="char-part-color" id="pp-point" value="#f0c040" oninput="updatePartCode('point',this.value)"><span class="char-part-code" id="pp-point-code">#f0c040</span></div>
+      </div>
+      <button class="btn btn-ink btn-full" style="margin-top:12px" onclick="applyProfile()">✦ 내 색감으로 자동 조정</button>
+    </div>
+    <div id="profile-result" class="hidden">
+      <div class="card"><div class="card-title">색감 적용 결과</div><div id="profile-result-inner"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ENV = { bg:'sea', time:'morning', weather:'sunny' };
+const HENV = { bg:'warm' };
+let charColors = [], skyColors = [], refImgB64 = null;
+let profileImgB64s = []; // images for learning
+let colorProfile = JSON.parse(localStorage.getItem('colorProfile') || 'null');
+
+function switchTab(t) {
+  ['env','ref','harmony','profile'].forEach(id => {
+    document.getElementById('tab-'+id).className = 'tab'+(t===id?' active':'');
+    document.getElementById('panel-'+id).className = t===id ? '' : 'hidden';
+  });
+  if(t==='profile') refreshProfileStatus();
+}
+
+function setEnv(type, val, btn) {
+  ENV[type] = val;
+  document.querySelectorAll(`[id^="${type}-"]`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function setHEnv(type, val, btn) {
+  HENV[type] = val;
+  document.querySelectorAll(`[id^="h-${type}-"]`).forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// Color input live update
+['hair','skin','top','bottom','eye'].forEach(part => {
+  const inp = document.getElementById(part+'-color');
+  const code = document.getElementById(part+'-code');
+  if(inp && code) {
+    inp.addEventListener('input', () => { code.textContent = inp.value; });
+  }
+});
+
+// Image loading + color extraction
+function loadCharImg(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const zone = document.getElementById('char-zone');
+    let img = zone.querySelector('img.preview');
+    if(!img){ img=document.createElement('img');img.className='preview';zone.appendChild(img); }
+    img.src = e.target.result;
+    zone.classList.add('has-img');
+    zone.querySelectorAll('.upload-icon,.upload-text,.upload-sub').forEach(el=>el.style.display='none');
+    extractColors(e.target.result, 'char-palette', cols => { charColors = cols; });
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadSkyImg(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const zone = document.getElementById('sky-zone');
+    let img = zone.querySelector('img.preview');
+    if(!img){ img=document.createElement('img');img.className='preview';zone.appendChild(img); }
+    img.src = e.target.result;
+    zone.classList.add('has-img');
+    zone.querySelectorAll('.upload-icon,.upload-text,.upload-sub').forEach(el=>el.style.display='none');
+    extractColors(e.target.result, 'sky-palette', cols => { skyColors = cols; });
+  };
+  reader.readAsDataURL(file);
+}
+
+function loadRefImg(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    refImgB64 = e.target.result.split(',')[1];
+    const zone = document.getElementById('ref-zone');
+    let img = zone.querySelector('img.preview');
+    if(!img){ img=document.createElement('img');img.className='preview';zone.appendChild(img); }
+    img.src = e.target.result;
+    zone.classList.add('has-img');
+    zone.querySelectorAll('.upload-icon,.upload-text,.upload-sub').forEach(el=>el.style.display='none');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Extract dominant colors from image using canvas
+function extractColors(dataUrl, paletteId, cb) {
+  const canvas = document.getElementById('extract-canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = 100; canvas.height = 100;
+    ctx.drawImage(img, 0, 0, 100, 100);
+    const data = ctx.getImageData(0, 0, 100, 100).data;
+    // Simple k-means-ish: sample every Nth pixel and cluster
+    const pixels = [];
+    for(let i=0;i<data.length;i+=16){
+      const r=data[i],g=data[i+1],b=data[i+2],a=data[i+3];
+      if(a>128) pixels.push([r,g,b]);
+    }
+    // Rough clustering: bucket by hue
+    const colors = clusterColors(pixels, 8);
+    renderPalette(paletteId, colors);
+    if(cb) cb(colors);
+  };
+  img.src = dataUrl;
+}
+
+function clusterColors(pixels, k) {
+  if(!pixels.length) return [];
+  // Simple median cut approximation
+  const buckets = [pixels];
+  while(buckets.length < k) {
+    let biggest = buckets.reduce((a,b)=>a.length>b.length?a:b);
+    if(biggest.length < 2) break;
+    const idx = buckets.indexOf(biggest);
+    buckets.splice(idx, 1);
+    // Split on largest range channel
+    const ranges = [0,1,2].map(c => {
+      const vals = biggest.map(p=>p[c]);
+      return Math.max(...vals)-Math.min(...vals);
+    });
+    const ch = ranges.indexOf(Math.max(...ranges));
+    biggest.sort((a,b)=>a[ch]-b[ch]);
+    const mid = Math.floor(biggest.length/2);
+    buckets.push(biggest.slice(0,mid), biggest.slice(mid));
+  }
+  return buckets.map(bucket => {
+    const avg = [0,1,2].map(c => Math.round(bucket.reduce((s,p)=>s+p[c],0)/bucket.length));
+    return rgbToHex(avg[0],avg[1],avg[2]);
+  }).filter((c,i,a)=>a.indexOf(c)===i).slice(0,8);
+}
+
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');}
+function hexToRgb(hex){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return{r,g,b};}
+
+function renderPalette(id, colors) {
+  const el = document.getElementById(id);
+  el.innerHTML = colors.map(c => `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-bottom:18px">
+      <div class="swatch" style="background:${c}" title="${c}" onclick="copyColor('${c}')"></div>
+      <span style="font-size:9px;color:var(--text3);font-family:monospace">${c}</span>
+    </div>
+  `).join('');
+}
+
+function copyColor(hex) {
+  navigator.clipboard.writeText(hex).catch(()=>{});
+  const fl = document.getElementById('flash');
+  fl.textContent = hex + ' 복사됨!';
+  fl.classList.add('show');
+  setTimeout(()=>fl.classList.remove('show'), 2000);
+}
+
+// Analyze environment via Claude API
+async function analyzeEnv() {
+  showLoading('환경 설정 분석 중...');
+  const envNames = {
+    bg:{sea:'바다',mountain:'산',field:'들판',city:'도시',forest:'숲',indoor:'실내'},
+    time:{dawn:'새벽/일출',morning:'아침',noon:'낮',evening:'저녁/노을',night:'밤',midnight:'심야'},
+    weather:{sunny:'햇살',shade:'그늘',cloudy:'흐림',rain:'비',snow:'눈',fog:'안개'}
+  };
+  const envDesc = `배경: ${envNames.bg[ENV.bg]}, 시간대: ${envNames.time[ENV.time]}, 날씨: ${envNames.weather[ENV.weather]}`;
+  const charColStr = charColors.length ? `캐릭터 색상 팔레트: ${charColors.join(', ')}` : '';
+  const skyColStr = skyColors.length ? `하늘/배경 색상 팔레트: ${skyColors.join(', ')}` : '';
+
+  const prompt = `수분화(watercolor) 채색 전문가로서 다음 환경에 맞는 채색 색상을 계산해주세요.
+
+환경: ${envDesc}
+${charColStr}
+${skyColStr}
+
+수분화 채색 원칙:
+- 밑색 = 환경광 + 그림자가 이미 혼합된 기본 그림자색 (채도 있게, 단순 검정 NO)
+- 빛색 = 하드라이트/스크린 레이어용 (따뜻한 환경이면 난색, 차가운 환경이면 한색)  
+- 반사광 = 빛색보다 어둡고 채도 낮게, 빛의 보색 계열
+- 한난 대비: 빛이 난색이면 그림자는 한색, 빛이 한색이면 그림자는 난색
+- 환경광(ambient)이 섞인 그림자는 배경 하늘색/환경색이 은은하게 반영됨
+
+다음 JSON 형식으로만 반환하세요:
+{
+  "environment_desc": "환경 한 줄 설명",
+  "ambient_light": {"hex":"#hexcode","name":"색 이름","desc":"이 색인 이유"},
+  "base_shadow": {"hex":"#hexcode","name":"색 이름","desc":"밑색/그림자 설명"},
+  "light": {"hex":"#hexcode","name":"색 이름","desc":"빛색 설명 (레이어 모드 포함)"},
+  "rim_light": {"hex":"#hexcode","name":"색 이름","desc":"반사광 설명"},
+  "warm_cool": "한난 대비 설명 한 문장",
+  "tips": ["수분화 팁1","팁2","팁3"]
+}`;
+
+  try {
+    const res = await callClaude(prompt, null);
+    const data = parseJSON(res);
+    if(data) renderEnvResult(data);
+    else showRawResult('env-result', 'env-result-inner', res);
+  } catch(e) {
+    console.error(e);
+    alert('오류가 발생했어요. 다시 시도해주세요.');
+  }
+  hideLoading();
+}
+
+async function analyzeRef() {
+  if(!refImgB64){ alert('레퍼런스 이미지를 먼저 올려주세요!'); return; }
+  showLoading('레퍼런스 이미지 분석 중...');
+
+  const prompt = `이 수분화(watercolor) 레퍼런스 이미지를 분석해서 채색에 사용된 색상을 추출해주세요.
+
+분석 항목:
+1. 캐릭터에 적용된 밑색(환경광+그림자 혼합색)
+2. 빛 색상 (밝은 부분, 하드라이트/스크린 계열)
+3. 반사광 색상 (빛보다 어두운 보조광)
+4. 한난 대비 방향 (빛이 난색인지 한색인지)
+5. 전체적인 환경광 색조
+
+JSON으로만 반환:
+{
+  "style_analysis": "이 이미지의 채색 스타일 분석",
+  "ambient_light": {"hex":"#hexcode","name":"환경광 색","desc":"설명"},
+  "base_shadow": {"hex":"#hexcode","name":"밑색/그림자","desc":"설명"},
+  "light": {"hex":"#hexcode","name":"빛색","desc":"레이어 모드 포함 설명"},
+  "rim_light": {"hex":"#hexcode","name":"반사광","desc":"설명"},
+  "warm_cool": "한난 대비 방향 설명",
+  "tips": ["이 이미지에서 배울 수 있는 팁1","팁2","팁3"]
+}`;
+
+  try {
+    const res = await callClaude(prompt, refImgB64);
+    const data = parseJSON(res);
+    if(data) renderEnvResult(data, 'ref');
+    else showRawResult('ref-result', 'ref-result-inner', res);
+  } catch(e) {
+    console.error(e);
+    alert('오류가 발생했어요. 다시 시도해주세요.');
+  }
+  hideLoading();
+}
+
+async function analyzeHarmony() {
+  showLoading('색 조화 계산 중...');
+  const parts = {
+    hair: document.getElementById('hair-color').value,
+    skin: document.getElementById('skin-color').value,
+    top: document.getElementById('top-color').value,
+    bottom: document.getElementById('bottom-color').value,
+    eye: document.getElementById('eye-color').value,
+  };
+  const bgMood = {warm:'따뜻한 난색 배경',cool:'차가운 한색 배경',neutral:'중간 채도 배경'}[HENV.bg];
+
+  const prompt = `수분화 채색 색 조화 전문가입니다. 다음 캐릭터 색상 조합을 분석하고 어울리는 색상을 추천해주세요.
+
+현재 색상:
+- 머리색: ${parts.hair}
+- 피부색: ${parts.skin}  
+- 상의: ${parts.top}
+- 하의: ${parts.bottom}
+- 눈 색: ${parts.eye}
+배경 분위기: ${bgMood}
+
+분석 원칙:
+- 한색(cool)과 난색(warm)이 조화롭게 섞이도록 분배
+- 전체 채도가 일정하게 유지되는지 확인 (한 색만 너무 튀면 안됨)
+- 보색 관계를 활용한 포인트 색 추천
+- 수분화에서 색이 번지는 특성 고려 (인접한 색이 섞일 때 탁해지지 않게)
+
+JSON으로만 반환:
+{
+  "harmony_analysis": "현재 색 조합 분석 (한난 밸런스, 채도 균형 등)",
+  "issues": ["문제점1","문제점2"],
+  "fixes": [
+    {"part":"머리색","current":"${parts.hair}","suggested":"#hexcode","reason":"이유"},
+    {"part":"상의","current":"${parts.top}","suggested":"#hexcode","reason":"이유"},
+    {"part":"하의","current":"${parts.bottom}","suggested":"#hexcode","reason":"이유"}
+  ],
+  "accent_colors": [
+    {"hex":"#hexcode","use":"포인트 사용처","reason":"이유"}
+  ],
+  "shadow_for_skin": {"hex":"#hexcode","desc":"이 피부색에 맞는 밑색/그림자"},
+  "light_for_scene": {"hex":"#hexcode","desc":"이 조합에 맞는 빛색"},
+  "tips": ["조화 팁1","팁2","팁3"]
+}`;
+
+  try {
+    const res = await callClaude(prompt, null);
+    const data = parseJSON(res);
+    if(data) renderHarmonyResult(data, parts);
+    else showRawResult('harmony-result','harmony-result-inner', res);
+  } catch(e) {
+    console.error(e);
+    alert('오류가 발생했어요. 다시 시도해주세요.');
+  }
+  hideLoading();
+}
+
+// Render functions
+function renderEnvResult(data, mode) {
+  const resultId = mode==='ref' ? 'ref-result' : 'env-result';
+  const innerId = mode==='ref' ? 'ref-result-inner' : 'env-result-inner';
+  const colors = [
+    {key:'ambient_light', label:'환경광'},
+    {key:'base_shadow', label:'밑색 / 그림자'},
+    {key:'light', label:'빛색'},
+    {key:'rim_light', label:'반사광'},
+  ];
+  const colorCards = colors.map(({key,label}) => {
+    const c = data[key]; if(!c) return '';
+    return `<div class="color-card">
+      <div class="color-swatch-big" style="background:${c.hex}">
+        <div class="color-card-label">${label}</div>
+      </div>
+      <div class="color-card-body">
+        <div class="color-card-name">${c.name||''}</div>
+        <div class="color-card-code" onclick="copyColor('${c.hex}')">
+          <span>${c.hex}</span><span class="copy-icon">⎘</span>
+        </div>
+        <div class="color-card-desc">${c.desc||''}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const tips = (data.tips||[]).map(t=>`<li style="font-size:13px;color:var(--text2);margin-bottom:5px;line-height:1.6">${t}</li>`).join('');
+
+  document.getElementById(innerId).innerHTML = `
+    ${data.environment_desc||data.style_analysis ? `<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.7;padding:10px 14px;background:var(--bg3);border-radius:var(--radius);">${data.environment_desc||data.style_analysis}</div>` : ''}
+    <div class="color-result-grid" style="margin-bottom:14px">${colorCards}</div>
+    ${data.warm_cool ? `<div style="font-size:13px;color:var(--text2);padding:10px 14px;background:var(--bg3);border-radius:var(--radius);margin-bottom:12px;line-height:1.7">🌡 <strong>한난 대비:</strong> ${data.warm_cool}</div>` : ''}
+    ${tips ? `<div style="margin-top:12px"><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">수분화 팁</div><ul style="padding-left:16px">${tips}</ul></div>` : ''}
+  `;
+  document.getElementById(resultId).classList.remove('hidden');
+}
+
+function renderHarmonyResult(data, parts) {
+  const fixes = (data.fixes||[]).map(f => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:8px">
+      <div style="width:36px;height:36px;border-radius:7px;background:${f.current};border:1px solid var(--border2);flex-shrink:0"></div>
+      <div style="font-size:18px;color:var(--text3)">→</div>
+      <div style="width:36px;height:36px;border-radius:7px;background:${f.suggested};border:1px solid var(--border2);cursor:pointer;flex-shrink:0" onclick="copyColor('${f.suggested}')" title="클릭해서 복사"></div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:500">${f.part}</div>
+        <div style="font-size:11px;color:var(--text3)">${f.current} → <span style="cursor:pointer" onclick="copyColor('${f.suggested}')">${f.suggested}</span> · ${f.reason}</div>
+      </div>
+    </div>`).join('');
+
+  const accents = (data.accent_colors||[]).map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:6px">
+      <div style="width:32px;height:32px;border-radius:6px;background:${a.hex};cursor:pointer;flex-shrink:0;border:1px solid var(--border2)" onclick="copyColor('${a.hex}')"></div>
+      <div>
+        <div style="font-size:12px;font-weight:500">${a.use}</div>
+        <div style="font-size:11px;color:var(--text3)">${a.hex} · ${a.reason}</div>
+      </div>
+    </div>`).join('');
+
+  const tips = (data.tips||[]).map(t=>`<li style="font-size:13px;color:var(--text2);margin-bottom:5px;line-height:1.6">${t}</li>`).join('');
+
+  document.getElementById('harmony-result-inner').innerHTML = `
+    ${data.harmony_analysis ? `<div style="font-size:13px;color:var(--text2);padding:10px 14px;background:var(--bg3);border-radius:var(--radius);margin-bottom:14px;line-height:1.7">${data.harmony_analysis}</div>` : ''}
+    ${data.issues?.length ? `<div style="margin-bottom:12px">${(data.issues||[]).map(i=>`<div style="font-size:12px;color:#8a4010;padding:5px 10px;background:rgba(180,80,20,0.07);border-radius:6px;margin-bottom:4px">⚠ ${i}</div>`).join('')}</div>` : ''}
+    ${fixes ? `<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">색 조정 제안</div>${fixes}</div>` : ''}
+    ${accents ? `<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">포인트 색 추천</div>${accents}</div>` : ''}
+    <div class="cols" style="margin-bottom:14px">
+      ${data.shadow_for_skin ? `<div class="color-card"><div class="color-swatch-big" style="background:${data.shadow_for_skin.hex}"><div class="color-card-label">피부 밑색</div></div><div class="color-card-body"><div class="color-card-code" onclick="copyColor('${data.shadow_for_skin.hex}')">${data.shadow_for_skin.hex} ⎘</div><div class="color-card-desc">${data.shadow_for_skin.desc||''}</div></div></div>` : ''}
+      ${data.light_for_scene ? `<div class="color-card"><div class="color-swatch-big" style="background:${data.light_for_scene.hex}"><div class="color-card-label">빛색</div></div><div class="color-card-body"><div class="color-card-code" onclick="copyColor('${data.light_for_scene.hex}')">${data.light_for_scene.hex} ⎘</div><div class="color-card-desc">${data.light_for_scene.desc||''}</div></div></div>` : ''}
+    </div>
+    ${tips ? `<div><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">색 조화 팁</div><ul style="padding-left:16px">${tips}</ul></div>` : ''}
+  `;
+  document.getElementById('harmony-result').classList.remove('hidden');
+}
+
+function showRawResult(sectionId, innerId, text) {
+  document.getElementById(innerId).innerHTML = `<pre style="font-size:12px;white-space:pre-wrap;color:var(--text2);line-height:1.6">${text}</pre>`;
+  document.getElementById(sectionId).classList.remove('hidden');
+}
+
+// Claude API
+async function callClaude(prompt, imgB64) {
+  const messages = imgB64 ? [{
+    role: 'user',
+    content: [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imgB64 } },
+      { type: 'text', text: prompt }
+    ]
+  }] : [{ role: 'user', content: prompt }];
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1500,
+      system: '당신은 수분화(watercolor) 채색 전문가입니다. 한국어로 답변하고, 요청한 JSON 형식으로만 반환하세요. 다른 텍스트 없이 순수 JSON만 반환하세요.',
+      messages
+    })
+  });
+  const data = await res.json();
+  return data.content?.[0]?.text || '';
+}
+
+function parseJSON(text) {
+  try {
+    const clean = text.replace(/```json|```/g,'').trim();
+    const m = clean.match(/\{[\s\S]*\}/);
+    if(m) return JSON.parse(m[0]);
+  } catch {}
+  return null;
+}
+
+// ====== PROFILE TAB ======
+function refreshProfileStatus() {
+  const st = document.getElementById('profile-status');
+  const warn = document.getElementById('profile-no-profile');
+  if(colorProfile) {
+    st.className = 'profile-badge learned';
+    st.textContent = `✦ 색감 프로필 저장됨 · ${colorProfile.style_name||'나만의 색감'}`;
+    if(warn) warn.style.display='none';
+  } else {
+    st.className = 'profile-badge empty';
+    st.textContent = '✦ 저장된 색감 프로필 없음';
+    if(warn) warn.style.display='block';
+  }
+}
+
+function updatePartCode(part, val) {
+  const el = document.getElementById('pp-'+part+'-code');
+  if(el) el.textContent = val;
+}
+
+function addProfileImgs(input) {
+  const files = Array.from(input.files);
+  const thumbs = document.getElementById('profile-thumbs');
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      profileImgB64s.push(e.target.result.split(',')[1]);
+      const img = document.createElement('img');
+      img.src = e.target.result;
+      img.className = 'img-thumb';
+      thumbs.appendChild(img);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function learnProfile() {
+  if(!profileImgB64s.length) { alert('이미지를 먼저 올려주세요!'); return; }
+  showLoading('색감 학습 중... 잠시만요');
+
+  // Send all images to Claude for style analysis
+  const content = [
+    ...profileImgB64s.slice(0,6).map(b64 => ({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: b64 }
+    })),
+    {
+      type: 'text',
+      text: `이 이미지들은 제가 좋아하는 색감의 일러스트입니다. 이 색감의 특징을 학습하고 프로필을 만들어주세요.
+
+분석 항목:
+- 전체 채도 수준 (낮음/중간/높음)
+- 명도 범위 (어두운지 밝은지)
+- 한색/난색 경향 (어느 쪽이 더 강한지)
+- 색조 특징 (파스텔, 선명, 탁함, 맑음 등)
+- 자주 쓰이는 색상 계열
+- 색들의 분위기 키워드
+
+JSON으로만 반환:
+{
+  "style_name": "이 색감을 한 단어로",
+  "style_desc": "색감 특징 한 문장",
+  "saturation": "low/medium/high",
+  "brightness": "dark/medium/light",
+  "temperature": "cool/neutral/warm",
+  "tone": "pastel/vivid/muted/clear 중 하나",
+  "dominant_hues": ["주로 쓰이는 색조1","색조2","색조3"],
+  "keywords": ["분위기 키워드1","키워드2","키워드3"],
+  "color_rules": [
+    "이 색감의 채색 규칙1 (예: 그림자에 보라가 섞임)",
+    "규칙2",
+    "규칙3"
+  ],
+  "avoid": ["이 색감에서 피해야 할 것1","피해야 할 것2"]
+}`
+    }
+  ];
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1200,
+        system: '색감 분석 전문가입니다. JSON만 반환하세요.',
+        messages: [{ role: 'user', content }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || '';
+    const profile = parseJSON(text);
+    if(profile) {
+      colorProfile = profile;
+      localStorage.setItem('colorProfile', JSON.stringify(profile));
+      refreshProfileStatus();
+      showAlert2('✦ 색감 학습 완료! 이제 컬러를 입력해서 조정해보세요.');
+    } else {
+      alert('분석에 실패했어요. 다시 시도해주세요.');
+    }
+  } catch(e) { console.error(e); alert('오류 발생!'); }
+  hideLoading();
+}
+
+function clearProfile() {
+  if(!confirm('색감 프로필을 초기화할까요?')) return;
+  colorProfile = null;
+  localStorage.removeItem('colorProfile');
+  profileImgB64s = [];
+  document.getElementById('profile-thumbs').innerHTML = '';
+  refreshProfileStatus();
+}
+
+async function applyProfile() {
+  if(!colorProfile) { alert('먼저 색감을 학습해주세요!'); return; }
+  showLoading('색감 적용 중...');
+
+  const parts = {
+    hair: document.getElementById('pp-hair').value,
+    top: document.getElementById('pp-top').value,
+    bottom: document.getElementById('pp-bottom').value,
+    top2: document.getElementById('pp-top2').value,
+    bottom2: document.getElementById('pp-bottom2').value,
+    point: document.getElementById('pp-point').value,
+  };
+
+  const prompt = `나만의 색감 프로필:
+이름: ${colorProfile.style_name}
+특징: ${colorProfile.style_desc}
+채도: ${colorProfile.saturation}, 명도: ${colorProfile.brightness}, 온도: ${colorProfile.temperature}, 톤: ${colorProfile.tone}
+주요 색조: ${(colorProfile.dominant_hues||[]).join(', ')}
+색감 규칙: ${(colorProfile.color_rules||[]).join(' / ')}
+피할 것: ${(colorProfile.avoid||[]).join(' / ')}
+
+캐릭터 현재 컬러:
+- 헤어: ${parts.hair}
+- 상의: ${parts.top}
+- 하의: ${parts.bottom}
+- 상의2: ${parts.top2}
+- 하의2: ${parts.bottom2}
+- 포인트: ${parts.point}
+
+이 색감 프로필에 맞게 각 컬러를 조정해주세요.
+원래 색의 느낌(분홍 머리는 여전히 분홍, 파란 옷은 여전히 파란 계열)을 유지하면서 색감만 프로필에 맞게 변환해주세요.
+한난 대비와 색조화도 함께 고려해주세요.
+
+JSON으로만 반환:
+{
+  "summary": "조정 방향 요약 한 문장",
+  "parts": [
+    {"name":"헤어","original":"${parts.hair}","adjusted":"#hexcode","reason":"조정 이유"},
+    {"name":"상의","original":"${parts.top}","adjusted":"#hexcode","reason":"조정 이유"},
+    {"name":"하의","original":"${parts.bottom}","adjusted":"#hexcode","reason":"조정 이유"},
+    {"name":"상의2","original":"${parts.top2}","adjusted":"#hexcode","reason":"조정 이유"},
+    {"name":"하의2","original":"${parts.bottom2}","adjusted":"#hexcode","reason":"조정 이유"},
+    {"name":"포인트","original":"${parts.point}","adjusted":"#hexcode","reason":"조정 이유"}
+  ],
+  "bonus_colors": [
+    {"hex":"#hexcode","use":"추천 사용처","reason":"이유"}
+  ],
+  "warm_cool_balance": "한난 대비 방향 설명",
+  "tips": ["이 색감으로 칠할 때 팁1","팁2"]
+}`;
+
+  try {
+    const res = await callClaude(prompt, null);
+    const data = parseJSON(res);
+    if(data) renderProfileResult(data);
+    else showRawResult('profile-result','profile-result-inner', res);
+  } catch(e) { console.error(e); alert('오류 발생!'); }
+  hideLoading();
+}
+
+function renderProfileResult(data) {
+  const parts = (data.parts||[]).map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg3);border-radius:var(--radius);margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="width:32px;height:32px;border-radius:7px;background:${p.original};border:1px solid var(--border2);flex-shrink:0"></div>
+        <span style="font-size:9px;color:var(--text3);font-family:monospace">${p.original}</span>
+      </div>
+      <div style="font-size:16px;color:var(--text3)">→</div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="width:38px;height:38px;border-radius:8px;background:${p.adjusted};border:2px solid rgba(255,255,255,0.8);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.15)" onclick="copyColor('${p.adjusted}')" title="클릭해서 복사"></div>
+        <span style="font-size:9px;color:var(--text3);font-family:monospace;cursor:pointer" onclick="copyColor('${p.adjusted}')">${p.adjusted}</span>
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500;margin-bottom:2px">${p.name}</div>
+        <div style="font-size:11px;color:var(--text3);line-height:1.5">${p.reason}</div>
+      </div>
+    </div>`).join('');
+
+  const bonus = (data.bonus_colors||[]).map(b => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:6px">
+      <div style="width:32px;height:32px;border-radius:6px;background:${b.hex};cursor:pointer;border:1px solid var(--border2)" onclick="copyColor('${b.hex}')"></div>
+      <div><div style="font-size:12px;font-weight:500">${b.use}</div><div style="font-size:11px;color:var(--text3)">${b.hex} · ${b.reason}</div></div>
+    </div>`).join('');
+
+  const tips = (data.tips||[]).map(t=>`<li style="font-size:13px;color:var(--text2);margin-bottom:5px;line-height:1.6">${t}</li>`).join('');
+
+  document.getElementById('profile-result-inner').innerHTML = `
+    <div style="font-size:13px;color:var(--text2);padding:10px 14px;background:var(--bg3);border-radius:var(--radius);margin-bottom:14px;line-height:1.7">
+      ✦ <strong>${colorProfile.style_name}</strong> 색감으로 조정됨 · ${data.summary||''}
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">컬러 조정 결과 (클릭해서 HEX 복사)</div>
+      ${parts}
+    </div>
+    ${bonus ? `<div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">추가 추천 색</div>${bonus}</div>` : ''}
+    ${data.warm_cool_balance ? `<div style="font-size:13px;color:var(--text2);padding:10px 14px;background:var(--bg3);border-radius:var(--radius);margin-bottom:12px;line-height:1.7">🌡 ${data.warm_cool_balance}</div>` : ''}
+    ${tips ? `<div><div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">채색 팁</div><ul style="padding-left:16px">${tips}</ul></div>` : ''}
+  `;
+  document.getElementById('profile-result').classList.remove('hidden');
+}
+
+function showAlert2(msg) {
+  const d = document.createElement('div');
+  d.className = 'alert';
+  d.style.cssText = 'background:rgba(60,120,60,0.08);border-color:rgba(60,120,60,0.25);color:#3a6a3a;margin-top:10px';
+  d.textContent = msg;
+  document.getElementById('profile-status').after(d);
+  setTimeout(()=>d.remove(), 4000);
+}
+
+// init profile status on load
+window.addEventListener('load', () => { refreshProfileStatus(); });
+
+function showLoading(msg) {
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('loading-sub').textContent = msg || '';
+}
+function hideLoading() {
+  document.getElementById('loading').classList.remove('show');
+}
+</script>
+</body>
+</html>
